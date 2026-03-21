@@ -228,6 +228,7 @@ export default function QuotePage() {
 
       if (validItems.length > 0) {
         const rows = validItems.map((item) => ({
+          quote_id: quoteId,         
           section_id: insertedSection.id,
           description: item.description,
           quantity: item.quantity,
@@ -405,10 +406,10 @@ export default function QuotePage() {
                 const filteredOptions = isShowAll
                   ? workOptions
                   : workOptions.filter((option) =>
-                      option
-                        .toLowerCase()
-                        .includes(item.description.toLowerCase())
-                    );
+                    option
+                      .toLowerCase()
+                      .includes(item.description.toLowerCase())
+                  );
 
                 return (
                   <div
