@@ -1,30 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Image from "next/image";
 import { supabase } from "@/src/lib/supabase";
 
-type Quote = {
-  id: number;
-  title: string;
-  customer_name: string | null;
-  created_at: string;
-};
-
 type Item = {
-  id: number;
   description: string;
   quantity: number;
   unit_price: number;
 };
 
-export default function PrintQuotePage() {
+type Section = {
+  title: string;
+  items: Item[];
+};
+
+export default function PrintPage() {
   const params = useParams();
   const quoteId = Number(params.id);
 
-  const [quote, setQuote] = useState<Quote | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
+  const [title, setTitle] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,151 +32,127 @@ export default function PrintQuotePage() {
   const loadData = async () => {
     setLoading(true);
 
-    const { data: quoteData, error: quoteError } = await supabase
+    // שליפת הצעה
+    const { data: quoteData } = await supabase
       .from("quotes")
       .select("*")
       .eq("id", quoteId)
       .single();
 
-    if (quoteError) {
-      alert(quoteError.message);
-      setLoading(false);
-      return;
-    }
+    setTitle(quoteData?.title || "");
+    setCustomerName(quoteData?.customer_name || "");
 
-    const { data: itemsData, error: itemsError } = await supabase
-      .from("quote_items")
+    // שליפת אזורים
+    const { data: sectionsData } = await supabase
+      .from("quote_sections")
       .select("*")
       .eq("quote_id", quoteId)
       .order("id", { ascending: true });
 
-    if (itemsError) {
-      alert(itemsError.message);
-      setLoading(false);
-      return;
+    const builtSections: Section[] = [];
+
+    for (const section of sectionsData || []) {
+      const { data: itemsData } = await supabase
+        .from("quote_items")
+        .select("*")
+        .eq("section_id", section.id)
+        .order("id", { ascending: true });
+
+      builtSections.push({
+        title: section.title,
+        items: (itemsData || []).map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        })),
+      });
     }
 
-    setQuote(quoteData);
-    setItems(itemsData || []);
+    setSections(builtSections);
     setLoading(false);
   };
 
-  const total = useMemo(() => {
-    return items.reduce((sum, item) => {
-      return sum + Number(item.quantity) * Number(item.unit_price);
-    }, 0);
-  }, [items]);
+  const total = sections.reduce((sum, section) => {
+    return (
+      sum +
+      section.items.reduce((s, item) => {
+        return s + item.quantity * item.unit_price;
+      }, 0)
+    );
+  }, 0);
 
   if (loading) {
-    return <main className="page-container">טוען...</main>;
+    return <div style={{ padding: 40 }}>טוען...</div>;
   }
 
   return (
-    <main
-      className="page-container"
-      style={{
-        maxWidth: 900,
-        background: "white",
-        minHeight: "100vh",
-      }}
-    >
-      <div className="top-bar" style={{ marginBottom: 30 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Image
-            src="/logo.png"
-            alt="לוגו רונן סרור"
-            width={80}
-            height={80}
-            style={{ objectFit: "contain" }}
-          />
-
-          <div>
-            <h1 className="page-title" style={{ marginBottom: 6 }}>
-              הצעת מחיר
-            </h1>
-            <p className="page-subtitle" style={{ marginBottom: 4 }}>
-              רונן סרור - עבודות חשמל ותקשורת
-            </p>
-            <p className="muted-text" style={{ margin: 0 }}>
-              0549599949
-            </p>
-          </div>
+    <div className="print-page" dir="rtl">
+      {/* HEADER */}
+      <div className="print-header">
+        <div>
+          <h1>רונן סרור</h1>
+          <p>עבודות חשמל ותקשורת</p>
         </div>
 
-        <button className="primary-button" onClick={() => window.print()}>
-          הדפס / שמור PDF
+        <img src="/logo.png" className="print-logo" />
+      </div>
+
+      {/* פרטי הצעה */}
+      <div className="print-info">
+        <h2>{title}</h2>
+        <p>לקוח: {customerName}</p>
+      </div>
+
+      {/* אזורים */}
+      {sections.map((section, i) => {
+        const sectionTotal = section.items.reduce((sum, item) => {
+          return sum + item.quantity * item.unit_price;
+        }, 0);
+
+        return (
+          <div key={i} className="print-section">
+            <h3 className="section-title">{section.title}</h3>
+
+            <table className="print-table">
+              <thead>
+                <tr>
+                  <th>תיאור עבודה</th>
+                  <th>כמות</th>
+                  <th>מחיר</th>
+                  <th>סה״כ</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {section.items.map((item, j) => (
+                  <tr key={j}>
+                    <td>{item.description}</td>
+                    <td>{item.quantity}</td>
+                    <td>₪{item.unit_price}</td>
+                    <td>₪{item.quantity * item.unit_price}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="section-total">
+              סה״כ לאזור: ₪{sectionTotal}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* TOTAL */}
+      <div className="print-total">
+        סה״כ הצעה: ₪{total}
+      </div>
+
+      {/* PRINT BUTTON */}
+      <div className="no-print">
+        <button onClick={() => window.print()} className="print-button">
+          הדפס / שמור כ-PDF
         </button>
       </div>
-
-      <div
-        className="card"
-        style={{ boxShadow: "none", border: "1px solid #e5e7eb" }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 16,
-            marginBottom: 30,
-          }}
-        >
-          <div>
-            <div className="muted-text">שם ההצעה</div>
-            <div style={{ fontWeight: 700, marginTop: 6 }}>
-              {quote?.title}
-            </div>
-          </div>
-
-          <div>
-            <div className="muted-text">לקוח</div>
-            <div style={{ fontWeight: 700, marginTop: 6 }}>
-              {quote?.customer_name || "ללא שם לקוח"}
-            </div>
-          </div>
-
-          <div>
-            <div className="muted-text">תאריך</div>
-            <div style={{ fontWeight: 700, marginTop: 6 }}>
-              {quote?.created_at
-                ? new Date(quote.created_at).toLocaleDateString("he-IL")
-                : ""}
-            </div>
-          </div>
-        </div>
-
-        <div className="quote-grid-header">
-          <div>תיאור עבודה</div>
-          <div>כמות</div>
-          <div>מחיר ליחידה</div>
-          <div>סכום</div>
-          <div></div>
-        </div>
-
-        {items.map((item) => {
-          const lineTotal = Number(item.quantity) * Number(item.unit_price);
-
-          return (
-            <div
-              key={item.id}
-              className="quote-grid-row"
-              style={{ gridTemplateColumns: "3fr 1fr 1fr 1fr 0fr" }}
-            >
-              <div>{item.description}</div>
-              <div>{item.quantity}</div>
-              <div>₪{item.unit_price}</div>
-              <div style={{ fontWeight: 700 }}>₪{lineTotal}</div>
-              <div></div>
-            </div>
-          );
-        })}
-
-        <div style={{ marginTop: 30 }}>
-          <div className="total-box">סה״כ: ₪{total}</div>
-        </div>
-         <div style={{ marginTop: 35 }}>
-          <div className="total-box"> לא כולל מע״מ</div>
-        </div>
-      </div>
-    </main>
+    </div>
   );
 }

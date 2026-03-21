@@ -298,3 +298,73 @@ button:hover {
 .autocomplete-item:hover {
   background: #f3f4f6;
 }
+/* PRINT PAGE */
+
+.print-page {
+  padding: 40px;
+  font-family: Arial;
+  color: #111;
+}
+
+.print-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.print-logo {
+  width: 80px;
+}
+
+.print-info {
+  margin-bottom: 30px;
+}
+
+.print-section {
+  margin-bottom: 30px;
+}
+
+.section-title {
+  margin-bottom: 10px;
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.print-table th,
+.print-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.section-total {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.print-total {
+  margin-top: 40px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.print-button {
+  margin-top: 30px;
+  padding: 10px 20px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* שלא יופיע בהדפסה */
+@media print {
+  .no-print {
+    display: none;
+  }
+}

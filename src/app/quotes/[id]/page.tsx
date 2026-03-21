@@ -12,6 +12,12 @@ type Item = {
   unit_price: number;
 };
 
+type Section = {
+  id?: number;
+  title: string;
+  items: Item[];
+};
+
 const workOptions = [
   "נקודת חשמל",
   "נקודת חשמל כח",
@@ -37,20 +43,28 @@ export default function QuotePage() {
   const params = useParams();
   const router = useRouter();
   const quoteId = Number(params.id);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [showAllIndex, setShowAllIndex] = useState<number | null>(null);
 
   const [title, setTitle] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [items, setItems] = useState<Item[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [activeInput, setActiveInput] = useState<{
+    sectionIndex: number;
+    itemIndex: number;
+  } | null>(null);
+
+  const [showAllInput, setShowAllInput] = useState<{
+    sectionIndex: number;
+    itemIndex: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!quoteId) return;
-    loadQuoteAndItems();
+    loadQuoteAndSections();
   }, [quoteId]);
 
-  const loadQuoteAndItems = async () => {
+  const loadQuoteAndSections = async () => {
     setLoading(true);
 
     const { data: quoteData, error: quoteError } = await supabase
@@ -68,52 +82,102 @@ export default function QuotePage() {
     setTitle(quoteData.title || "");
     setCustomerName(quoteData.customer_name || "");
 
-    const { data: itemsData, error: itemsError } = await supabase
-      .from("quote_items")
+    const { data: sectionsData, error: sectionsError } = await supabase
+      .from("quote_sections")
       .select("*")
       .eq("quote_id", quoteId)
       .order("id", { ascending: true });
 
-    if (itemsError) {
-      alert(itemsError.message);
+    if (sectionsError) {
+      alert(sectionsError.message);
       setLoading(false);
       return;
     }
 
-    setItems(itemsData || []);
+    const builtSections: Section[] = [];
+
+    for (const section of sectionsData || []) {
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("quote_items")
+        .select("*")
+        .eq("section_id", section.id)
+        .order("id", { ascending: true });
+
+      if (itemsError) {
+        alert(itemsError.message);
+        setLoading(false);
+        return;
+      }
+
+      builtSections.push({
+        id: section.id,
+        title: section.title,
+        items: (itemsData || []).map((item) => ({
+          id: item.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        })),
+      });
+    }
+
+    setSections(builtSections);
     setLoading(false);
   };
 
-  const addItem = () => {
-    setItems([
-      ...items,
+  const addSection = () => {
+    setSections([
+      ...sections,
       {
-        description: "",
-        quantity: 1,
-        unit_price: 0,
+        title: "",
+        items: [],
       },
     ]);
   };
 
-  const removeItem = (index: number) => {
-    const updated = [...items];
-    updated.splice(index, 1);
-    setItems(updated);
+  const removeSection = (sectionIndex: number) => {
+    const updated = [...sections];
+    updated.splice(sectionIndex, 1);
+    setSections(updated);
+  };
+
+  const updateSectionTitle = (sectionIndex: number, value: string) => {
+    const updated = [...sections];
+    updated[sectionIndex] = {
+      ...updated[sectionIndex],
+      title: value,
+    };
+    setSections(updated);
+  };
+
+  const addItemToSection = (sectionIndex: number) => {
+    const updated = [...sections];
+    updated[sectionIndex].items.push({
+      description: "",
+      quantity: 1,
+      unit_price: 0,
+    });
+    setSections(updated);
+  };
+
+  const removeItemFromSection = (sectionIndex: number, itemIndex: number) => {
+    const updated = [...sections];
+    updated[sectionIndex].items.splice(itemIndex, 1);
+    setSections(updated);
   };
 
   const updateItem = (
-    index: number,
+    sectionIndex: number,
+    itemIndex: number,
     field: keyof Item,
     value: string
   ) => {
-    const updated = [...items];
-
-    updated[index] = {
-      ...updated[index],
+    const updated = [...sections];
+    updated[sectionIndex].items[itemIndex] = {
+      ...updated[sectionIndex].items[itemIndex],
       [field]: field === "description" ? value : Number(value),
     };
-
-    setItems(updated);
+    setSections(updated);
   };
 
   const saveQuote = async () => {
@@ -131,38 +195,58 @@ export default function QuotePage() {
       return;
     }
 
-    const { error: deleteError } = await supabase
-      .from("quote_items")
+    const { error: deleteSectionsError } = await supabase
+      .from("quote_sections")
       .delete()
       .eq("quote_id", quoteId);
 
-    if (deleteError) {
-      alert(deleteError.message);
+    if (deleteSectionsError) {
+      alert(deleteSectionsError.message);
       return;
     }
 
-    const validRows = items.filter((item) => item.description.trim() !== "");
+    for (const section of sections) {
+      if (!section.title.trim()) continue;
 
-    if (validRows.length > 0) {
-      const rows = validRows.map((item) => ({
-        quote_id: quoteId,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-      }));
+      const { data: insertedSection, error: sectionInsertError } = await supabase
+        .from("quote_sections")
+        .insert({
+          quote_id: quoteId,
+          title: section.title,
+        })
+        .select()
+        .single();
 
-      const { error: insertError } = await supabase
-        .from("quote_items")
-        .insert(rows);
-
-      if (insertError) {
-        alert(insertError.message);
+      if (sectionInsertError) {
+        alert(sectionInsertError.message);
         return;
+      }
+
+      const validItems = section.items.filter(
+        (item) => item.description.trim() !== ""
+      );
+
+      if (validItems.length > 0) {
+        const rows = validItems.map((item) => ({
+          section_id: insertedSection.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        }));
+
+        const { error: itemsInsertError } = await supabase
+          .from("quote_items")
+          .insert(rows);
+
+        if (itemsInsertError) {
+          alert(itemsInsertError.message);
+          return;
+        }
       }
     }
 
     alert("ההצעה נשמרה בהצלחה");
-    loadQuoteAndItems();
+    loadQuoteAndSections();
   };
 
   const deleteQuote = async () => {
@@ -181,10 +265,14 @@ export default function QuotePage() {
   };
 
   const total = useMemo(() => {
-    return items.reduce((sum, item) => {
-      return sum + Number(item.quantity) * Number(item.unit_price);
+    return sections.reduce((sectionsSum, section) => {
+      const sectionSum = section.items.reduce((itemsSum, item) => {
+        return itemsSum + Number(item.quantity) * Number(item.unit_price);
+      }, 0);
+
+      return sectionsSum + sectionSum;
     }, 0);
-  }, [items]);
+  }, [sections]);
 
   if (loading) {
     return <main className="page-container">טוען...</main>;
@@ -195,7 +283,7 @@ export default function QuotePage() {
       <div className="top-bar">
         <div>
           <h1 className="page-title">עריכת הצעה</h1>
-          <p className="page-subtitle">ניהול פרטי ההצעה ושורות העבודה</p>
+          <p className="page-subtitle">ניהול פרטי ההצעה, אזורים ושורות עבודה</p>
         </div>
 
         <div className="action-row">
@@ -235,125 +323,230 @@ export default function QuotePage() {
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="top-bar" style={{ marginBottom: 18 }}>
           <h2 className="card-title" style={{ margin: 0 }}>
-            שורות עבודה
+            אזורים / מיקומים
           </h2>
 
-          <button className="primary-button" onClick={addItem}>
-            הוסף שורה
+          <button className="primary-button" onClick={addSection}>
+            הוסף אזור
           </button>
         </div>
 
-        <div className="quote-grid-header">
-          <div>תיאור עבודה</div>
-          <div>כמות</div>
-          <div>מחיר ליחידה</div>
-          <div>סכום</div>
-          <div></div>
-        </div>
+        {sections.length === 0 && (
+          <div className="muted-text">עדיין לא נוספו אזורים להצעה.</div>
+        )}
 
-        {items.map((item, index) => {
-          const lineTotal = Number(item.quantity) * Number(item.unit_price);
+        {sections.map((section, sectionIndex) => {
+          const sectionTotal = section.items.reduce((sum, item) => {
+            return sum + Number(item.quantity) * Number(item.unit_price);
+          }, 0);
 
           return (
-            <div key={index} className="quote-grid-row">
-              <div style={{ position: "relative" }}>
-                <div style={{ position: "relative" }}>
+            <div
+              key={sectionIndex}
+              className="card"
+              style={{
+                marginBottom: 20,
+                background: "#fafafa",
+                border: "1px solid #e5e7eb",
+                boxShadow: "none",
+              }}
+            >
+              <div className="top-bar" style={{ marginBottom: 16 }}>
+                <div style={{ flex: 1 }}>
                   <input
-                    placeholder="תיאור עבודה"
-                    value={item.description}
-                    onChange={(e) => {
-                      updateItem(index, "description", e.target.value);
-                      setActiveIndex(index);
-                      setShowAllIndex(null);
-                    }}
-                    onFocus={() => setActiveIndex(index)}
-                    onBlur={() => {
-                      setTimeout(() => {
-                        setActiveIndex(null);
-                        setShowAllIndex(null);
-                      }, 150);
-                    }}
-                    style={{ paddingLeft: 40 }}
+                    placeholder="שם האזור / מיקום (למשל סלון)"
+                    value={section.title}
+                    onChange={(e) =>
+                      updateSectionTitle(sectionIndex, e.target.value)
+                    }
                   />
-
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setActiveIndex(index);
-                      setShowAllIndex(showAllIndex === index ? null : index);
-                    }}
-                    style={{
-                      position: "absolute",
-                      left: 10,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "transparent",
-                      border: "none",
-                      padding: 0,
-                      fontSize: 16,
-                      cursor: "pointer",
-                      color: "#6b7280",
-                    }}
-                  >
-                    ▾
-                  </button>
                 </div>
 
-                {(activeIndex === index || showAllIndex === index) && (
-                  <div className="autocomplete-box">
-                    {(showAllIndex === index
-                      ? workOptions
-                      : workOptions.filter((option) =>
-                        option.toLowerCase().includes(item.description.toLowerCase())
-                      )
-                    ).map((option) => (
-                      <div
-                        key={option}
-                        className="autocomplete-item"
-                        onMouseDown={() => {
-                          updateItem(index, "description", option);
-                          setActiveIndex(null);
-                          setShowAllIndex(null);
-                        }}
-                      >
-                        {option}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="action-row">
+                  <button
+                    className="secondary-button"
+                    onClick={() => addItemToSection(sectionIndex)}
+                  >
+                    הוסף שורה
+                  </button>
+
+                  <button
+                    className="danger-button"
+                    onClick={() => removeSection(sectionIndex)}
+                  >
+                    מחק אזור
+                  </button>
+                </div>
               </div>
 
-              <input
-                type="number"
-                min="0"
-                placeholder="כמות"
-                value={item.quantity}
-                onChange={(e) => updateItem(index, "quantity", e.target.value)}
-              />
+              <div
+                className="quote-grid-header"
+                style={{ gridTemplateColumns: "3fr 1fr 1fr 1fr auto" }}
+              >
+                <div>תיאור עבודה</div>
+                <div>כמות</div>
+                <div>מחיר ליחידה</div>
+                <div>סכום</div>
+                <div></div>
+              </div>
 
-              <input
-                type="number"
-                min="0"
-                placeholder="מחיר"
-                value={item.unit_price}
-                onChange={(e) => updateItem(index, "unit_price", e.target.value)}
-              />
+              {section.items.map((item, itemIndex) => {
+                const lineTotal =
+                  Number(item.quantity) * Number(item.unit_price);
 
-              <div style={{ fontWeight: 700 }}>₪{lineTotal}</div>
+                const isActive =
+                  activeInput?.sectionIndex === sectionIndex &&
+                  activeInput?.itemIndex === itemIndex;
 
-              <button className="danger-button" onClick={() => removeItem(index)}>
-                מחק
-              </button>
+                const isShowAll =
+                  showAllInput?.sectionIndex === sectionIndex &&
+                  showAllInput?.itemIndex === itemIndex;
+
+                const filteredOptions = isShowAll
+                  ? workOptions
+                  : workOptions.filter((option) =>
+                      option
+                        .toLowerCase()
+                        .includes(item.description.toLowerCase())
+                    );
+
+                return (
+                  <div
+                    key={itemIndex}
+                    className="quote-grid-row"
+                    style={{ gridTemplateColumns: "3fr 1fr 1fr 1fr auto" }}
+                  >
+                    <div style={{ position: "relative" }}>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          placeholder="תיאור עבודה"
+                          value={item.description}
+                          onChange={(e) => {
+                            updateItem(
+                              sectionIndex,
+                              itemIndex,
+                              "description",
+                              e.target.value
+                            );
+                            setActiveInput({ sectionIndex, itemIndex });
+                            setShowAllInput(null);
+                          }}
+                          onFocus={() =>
+                            setActiveInput({ sectionIndex, itemIndex })
+                          }
+                          onBlur={() => {
+                            setTimeout(() => {
+                              setActiveInput(null);
+                              setShowAllInput(null);
+                            }, 150);
+                          }}
+                          style={{ paddingLeft: 40 }}
+                        />
+
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setActiveInput({ sectionIndex, itemIndex });
+                            setShowAllInput(
+                              isShowAll ? null : { sectionIndex, itemIndex }
+                            );
+                          }}
+                          style={{
+                            position: "absolute",
+                            left: 10,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            background: "transparent",
+                            border: "none",
+                            padding: 0,
+                            fontSize: 16,
+                            cursor: "pointer",
+                            color: "#6b7280",
+                          }}
+                        >
+                          ▾
+                        </button>
+                      </div>
+
+                      {(isActive || isShowAll) && filteredOptions.length > 0 && (
+                        <div className="autocomplete-box">
+                          {filteredOptions.map((option) => (
+                            <div
+                              key={option}
+                              className="autocomplete-item"
+                              onMouseDown={() => {
+                                updateItem(
+                                  sectionIndex,
+                                  itemIndex,
+                                  "description",
+                                  option
+                                );
+                                setActiveInput(null);
+                                setShowAllInput(null);
+                              }}
+                            >
+                              {option}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="כמות"
+                      value={item.quantity}
+                      onChange={(e) =>
+                        updateItem(
+                          sectionIndex,
+                          itemIndex,
+                          "quantity",
+                          e.target.value
+                        )
+                      }
+                    />
+
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="מחיר"
+                      value={item.unit_price}
+                      onChange={(e) =>
+                        updateItem(
+                          sectionIndex,
+                          itemIndex,
+                          "unit_price",
+                          e.target.value
+                        )
+                      }
+                    />
+
+                    <div style={{ fontWeight: 700 }}>₪{lineTotal}</div>
+
+                    <button
+                      className="danger-button"
+                      onClick={() => removeItemFromSection(sectionIndex, itemIndex)}
+                    >
+                      מחק
+                    </button>
+                  </div>
+                );
+              })}
+
+              {section.items.length === 0 && (
+                <div className="muted-text" style={{ marginTop: 12 }}>
+                  עדיין לא נוספו שורות עבודה באזור הזה.
+                </div>
+              )}
+
+              <div style={{ marginTop: 18, fontWeight: 700 }}>
+                סה״כ לאזור: ₪{sectionTotal}
+              </div>
             </div>
           );
         })}
-
-        {items.length === 0 && (
-          <div className="muted-text" style={{ marginTop: 12 }}>
-            עדיין לא נוספו שורות להצעה.
-          </div>
-        )}
       </div>
 
       <div className="card" style={{ marginBottom: 24 }}>
@@ -370,6 +563,6 @@ export default function QuotePage() {
           מחק הצעה
         </button>
       </div>
-    </main >
+    </main>
   );
 }
