@@ -12,6 +12,27 @@ type Item = {
   unit_price: number;
 };
 
+const workOptions = [
+  "נקודת חשמל",
+ "נקודת חשמל כח",
+ "נקודת חשמל כפולה",
+ "נקודת חשמל מוגנת מים",
+ "נקודת חשמל תלת פאזי",
+ "נקודת חשמל עבור תנור חימום",
+ "נקודת חשמל עבור דוד שמש",
+ "נקודת חשמל כולל סימה בוקס",
+ "נקודת תאורה",
+ "נקודת תאורת חירום",
+ "נקודת תאורה חילוף",
+ "נקודת תאורה צלב",
+ "נקודת תקשורת",
+ "התקנת גוף תאורה צמוד תקרה",
+ "התקנת גוף תאורה קירי",
+ "התקנת מאוורר תקרה",
+ "אספקה והתקנת לוח חשמל",
+ "אספקה והתקנת לוח תקשורת",
+];
+
 export default function QuotePage() {
   const params = useParams();
   const router = useRouter();
@@ -234,12 +255,19 @@ export default function QuotePage() {
           return (
             <div key={index} className="quote-grid-row">
               <input
-                placeholder="תיאור עבודה"
-                value={item.description}
-                onChange={(e) =>
-                  updateItem(index, "description", e.target.value)
-                }
-              />
+  list={`work-options-${index}`}
+  placeholder="תיאור עבודה"
+  value={item.description}
+  onChange={(e) =>
+    updateItem(index, "description", e.target.value)
+  }
+/>
+
+<datalist id={`work-options-${index}`}>
+  {workOptions.map((option) => (
+    <option key={option} value={option} />
+  ))}
+</datalist>
 
               <input
                 type="number"
