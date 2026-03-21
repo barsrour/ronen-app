@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/src/lib/supabase";
-const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
 type Item = {
   id?: number;
@@ -38,6 +37,7 @@ export default function QuotePage() {
   const params = useParams();
   const router = useRouter();
   const quoteId = Number(params.id);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const [title, setTitle] = useState("");
   const [customerName, setCustomerName] = useState("");
