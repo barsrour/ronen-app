@@ -254,16 +254,37 @@ export default function QuotePage() {
           const lineTotal = Number(item.quantity) * Number(item.unit_price);
 
           return (
-            <div key={index} className="quote-grid-row">
+            <div style={{ position: "relative" }}>
               <input
                 placeholder="תיאור עבודה"
                 value={item.description}
-                onChange={(e) =>
-                  updateItem(index, "description", e.target.value)
-                }
+                onChange={(e) => updateItem(index, "description", e.target.value)}
                 onFocus={() => setActiveIndex(index)}
+                onBlur={() => {
+                  setTimeout(() => setActiveIndex(null), 150);
+                }}
               />
 
+              {activeIndex === index && item.description && (
+                <div className="autocomplete-box">
+                  {workOptions
+                    .filter((option) =>
+                      option.toLowerCase().includes(item.description.toLowerCase())
+                    )
+                    .map((option) => (
+                      <div
+                        key={option}
+                        className="autocomplete-item"
+                        onMouseDown={() => {
+                          updateItem(index, "description", option);
+                          setActiveIndex(null);
+                        }}
+                      >
+                        {option}
+                      </div>
+                    ))}
+                </div>
+              )}
 
 
               <datalist id={`work-options-${index}`}>
@@ -323,6 +344,6 @@ export default function QuotePage() {
           מחק הצעה
         </button>
       </div>
-    </main>
+    </main >
   );
 }
