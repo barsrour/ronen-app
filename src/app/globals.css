@@ -281,10 +281,12 @@ button:hover {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   margin-top: 6px;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
   z-index: 20;
   direction: rtl;
   text-align: right;
+  max-height: 220px;
+  overflow-y: auto;
 }
 
 .autocomplete-item {
