@@ -254,44 +254,39 @@ export default function QuotePage() {
           const lineTotal = Number(item.quantity) * Number(item.unit_price);
 
           return (
-            <div style={{ position: "relative" }}>
-              <input
-                placeholder="תיאור עבודה"
-                value={item.description}
-                onChange={(e) => updateItem(index, "description", e.target.value)}
-                onFocus={() => setActiveIndex(index)}
-                onBlur={() => {
-                  setTimeout(() => setActiveIndex(null), 150);
-                }}
-              />
+            <div key={index} className="quote-grid-row">
+              <div style={{ position: "relative" }}>
+                <input
+                  placeholder="תיאור עבודה"
+                  value={item.description}
+                  onChange={(e) => updateItem(index, "description", e.target.value)}
+                  onFocus={() => setActiveIndex(index)}
+                  onBlur={() => {
+                    setTimeout(() => setActiveIndex(null), 150);
+                  }}
+                />
 
-              {activeIndex === index && item.description && (
-                <div className="autocomplete-box">
-                  {workOptions
-                    .filter((option) =>
-                      option.toLowerCase().includes(item.description.toLowerCase())
-                    )
-                    .map((option) => (
-                      <div
-                        key={option}
-                        className="autocomplete-item"
-                        onMouseDown={() => {
-                          updateItem(index, "description", option);
-                          setActiveIndex(null);
-                        }}
-                      >
-                        {option}
-                      </div>
-                    ))}
-                </div>
-              )}
-
-
-              <datalist id={`work-options-${index}`}>
-                {workOptions.map((option) => (
-                  <option key={option} value={option} />
-                ))}
-              </datalist>
+                {activeIndex === index && item.description && (
+                  <div className="autocomplete-box">
+                    {workOptions
+                      .filter((option) =>
+                        option.toLowerCase().includes(item.description.toLowerCase())
+                      )
+                      .map((option) => (
+                        <div
+                          key={option}
+                          className="autocomplete-item"
+                          onMouseDown={() => {
+                            updateItem(index, "description", option);
+                            setActiveIndex(null);
+                          }}
+                        >
+                          {option}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
 
               <input
                 type="number"
@@ -306,17 +301,12 @@ export default function QuotePage() {
                 min="0"
                 placeholder="מחיר"
                 value={item.unit_price}
-                onChange={(e) =>
-                  updateItem(index, "unit_price", e.target.value)
-                }
+                onChange={(e) => updateItem(index, "unit_price", e.target.value)}
               />
 
               <div style={{ fontWeight: 700 }}>₪{lineTotal}</div>
 
-              <button
-                className="danger-button"
-                onClick={() => removeItem(index)}
-              >
+              <button className="danger-button" onClick={() => removeItem(index)}>
                 מחק
               </button>
             </div>
