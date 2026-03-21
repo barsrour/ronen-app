@@ -38,6 +38,7 @@ export default function QuotePage() {
   const router = useRouter();
   const quoteId = Number(params.id);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [showAllIndex, setShowAllIndex] = useState<number | null>(null);
 
   const [title, setTitle] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -256,34 +257,69 @@ export default function QuotePage() {
           return (
             <div key={index} className="quote-grid-row">
               <div style={{ position: "relative" }}>
-                <input
-                  placeholder="תיאור עבודה"
-                  value={item.description}
-                  onChange={(e) => updateItem(index, "description", e.target.value)}
-                  onFocus={() => setActiveIndex(index)}
-                  onBlur={() => {
-                    setTimeout(() => setActiveIndex(null), 150);
-                  }}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    placeholder="תיאור עבודה"
+                    value={item.description}
+                    onChange={(e) => {
+                      updateItem(index, "description", e.target.value);
+                      setActiveIndex(index);
+                      setShowAllIndex(null);
+                    }}
+                    onFocus={() => setActiveIndex(index)}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        setActiveIndex(null);
+                        setShowAllIndex(null);
+                      }, 150);
+                    }}
+                    style={{ paddingLeft: 40 }}
+                  />
 
-                {activeIndex === index && item.description && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setActiveIndex(index);
+                      setShowAllIndex(showAllIndex === index ? null : index);
+                    }}
+                    style={{
+                      position: "absolute",
+                      left: 10,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "transparent",
+                      border: "none",
+                      padding: 0,
+                      fontSize: 16,
+                      cursor: "pointer",
+                      color: "#6b7280",
+                    }}
+                  >
+                    ▾
+                  </button>
+                </div>
+
+                {(activeIndex === index || showAllIndex === index) && (
                   <div className="autocomplete-box">
-                    {workOptions
-                      .filter((option) =>
+                    {(showAllIndex === index
+                      ? workOptions
+                      : workOptions.filter((option) =>
                         option.toLowerCase().includes(item.description.toLowerCase())
                       )
-                      .map((option) => (
-                        <div
-                          key={option}
-                          className="autocomplete-item"
-                          onMouseDown={() => {
-                            updateItem(index, "description", option);
-                            setActiveIndex(null);
-                          }}
-                        >
-                          {option}
-                        </div>
-                      ))}
+                    ).map((option) => (
+                      <div
+                        key={option}
+                        className="autocomplete-item"
+                        onMouseDown={() => {
+                          updateItem(index, "description", option);
+                          setActiveIndex(null);
+                          setShowAllIndex(null);
+                        }}
+                      >
+                        {option}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
