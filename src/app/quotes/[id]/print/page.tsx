@@ -146,6 +146,12 @@ export default function PrintPage() {
       <div className="print-total">
         סה״כ הצעה: ₪{total}
       </div>
+      <div className="print-header">
+        <div>
+          
+          <p>לא כולל מע״מ</p>
+        </div>
+      </div>
 
       {/* PRINT BUTTON */}
       <div className="no-print">
