@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/src/lib/supabase";
+const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
 type Item = {
   id?: number;
@@ -14,23 +15,23 @@ type Item = {
 
 const workOptions = [
   "נקודת חשמל",
- "נקודת חשמל כח",
- "נקודת חשמל כפולה",
- "נקודת חשמל מוגנת מים",
- "נקודת חשמל תלת פאזי",
- "נקודת חשמל עבור תנור חימום",
- "נקודת חשמל עבור דוד שמש",
- "נקודת חשמל כולל סימה בוקס",
- "נקודת תאורה",
- "נקודת תאורת חירום",
- "נקודת תאורה חילוף",
- "נקודת תאורה צלב",
- "נקודת תקשורת",
- "התקנת גוף תאורה צמוד תקרה",
- "התקנת גוף תאורה קירי",
- "התקנת מאוורר תקרה",
- "אספקה והתקנת לוח חשמל",
- "אספקה והתקנת לוח תקשורת",
+  "נקודת חשמל כח",
+  "נקודת חשמל כפולה",
+  "נקודת חשמל מוגנת מים",
+  "נקודת חשמל תלת פאזי",
+  "נקודת חשמל עבור תנור חימום",
+  "נקודת חשמל עבור דוד שמש",
+  "נקודת חשמל כולל סימה בוקס",
+  "נקודת תאורה",
+  "נקודת תאורת חירום",
+  "נקודת תאורה חילוף",
+  "נקודת תאורה צלב",
+  "נקודת תקשורת",
+  "התקנת גוף תאורה צמוד תקרה",
+  "התקנת גוף תאורה קירי",
+  "התקנת מאוורר תקרה",
+  "אספקה והתקנת לוח חשמל",
+  "אספקה והתקנת לוח תקשורת",
 ];
 
 export default function QuotePage() {
@@ -255,19 +256,21 @@ export default function QuotePage() {
           return (
             <div key={index} className="quote-grid-row">
               <input
-  list={`work-options-${index}`}
-  placeholder="תיאור עבודה"
-  value={item.description}
-  onChange={(e) =>
-    updateItem(index, "description", e.target.value)
-  }
-/>
+                placeholder="תיאור עבודה"
+                value={item.description}
+                onChange={(e) =>
+                  updateItem(index, "description", e.target.value)
+                }
+                onFocus={() => setActiveIndex(index)}
+              />
 
-<datalist id={`work-options-${index}`}>
-  {workOptions.map((option) => (
-    <option key={option} value={option} />
-  ))}
-</datalist>
+
+
+              <datalist id={`work-options-${index}`}>
+                {workOptions.map((option) => (
+                  <option key={option} value={option} />
+                ))}
+              </datalist>
 
               <input
                 type="number"
