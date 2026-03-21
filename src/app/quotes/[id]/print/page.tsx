@@ -176,6 +176,9 @@ export default function PrintQuotePage() {
         <div style={{ marginTop: 30 }}>
           <div className="total-box">סה״כ: ₪{total}</div>
         </div>
+         <div style={{ marginTop: 35 }}>
+          <div className="total-box"> לא כולל מע״מ</div>
+        </div>
       </div>
     </main>
   );
